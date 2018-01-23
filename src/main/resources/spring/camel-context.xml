@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring       http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <camelContext xmlns="http://camel.apache.org/schema/spring">
+
+        <!-- TODO choose a binding mode -->
+
+        <restConfiguration contextPath="/api"
+                           component="servlet"
+                           port="8080"
+                           apiContextPath="/api-doc"
+                           bindingMode="json"
+                           enableCORS="true">
+            <apiProperty key="api.title" value="Job Manager"/>
+            <apiProperty key="api.description" value="Service that allows a scheduler to start, stop and query Jobs in OpenShift"/>
+            <apiProperty key="api.contact.name" value="Your Company"/>
+            <corsHeaders key="Access-Control-Allow-Origin" value="*"/>
+        </restConfiguration>
+
+        <rest path="/jobtemplates">
+            <get id="get-all-jobtemplates">
+                <description>Get all templates that can be used to create jobs</description>
+                <to uri="bean:jobService?method=getJobTemplates"/>
+            </get>
+            <post id="process-jobtemplate" uri="{templateName}">
+                <description>Creates Jobs from a given Template</description>
+                <responseMessage code="201" message="Job created"/>
+                <to uri="bean:jobService?method=createJob(${header.templateName})"/>
+            </post>
+        </rest>
+
+        <rest path="/jobs">
+            <get id="get-job" uri="{id}">
+                <description>Get a specific Job</description>
+                <to uri="bean:jobService?method=getJob(${header.id})"/>
+            </get>
+            <get id="get-all-jobs">
+                <description>Get all Jobs</description>
+                <to uri="bean:jobService?method=getJobs"/>
+            </get>
+            <delete id="delete-job" uri="{id}">
+                <description>Stop a Job</description>
+                <responseMessage code="204" message="Job deleted"/>
+                <to uri="bean:jobService?method=deleteJob(${header.id})"/>
+            </delete>
+        </rest>
+
+    </camelContext>
+
+</beans>
