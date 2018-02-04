@@ -15,33 +15,175 @@
  */
 package com.example;
 
+import com.example.mock.OpenShiftServer;
+import com.example.model.TaskTemplate;
+import io.fabric8.kubernetes.api.model.PodBuilder;
+import io.fabric8.openshift.api.model.TemplateBuilder;
+import io.fabric8.openshift.api.model.TemplateList;
+import io.fabric8.openshift.api.model.TemplateListBuilder;
+import io.fabric8.openshift.client.OpenShiftClient;
+import io.fabric8.utils.IOHelpers;
 import org.apache.camel.CamelContext;
-import org.apache.camel.builder.NotifyBuilder;
+import org.apache.camel.test.spring.CamelSpringBootRunner;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.junit4.SpringRunner;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.BDDMockito.given;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+/**
+ * Unit tests for the Task Manager REST API.
+ *
+ * Uses a mock OpenShift/Kubernetes API server, which is configured in
+ * {@link com.example.mock.OpenShiftServer}. Underneath the hood this uses
+ * `io.fabric8.mockwebserver` to service HTTP requests with test data.
+ */
+@RunWith(CamelSpringBootRunner.class)
+@SpringBootTest(classes = Application.class, webEnvironment = WebEnvironment.RANDOM_PORT)
 public class ApplicationTest {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ApplicationTest.class);
+
+    private static final String TEST_NAMESPACE = "test";
+    private static final String TEMPLATE_LABEL = "taskman";
+
+    /**
+     * This will have Spring's RANDOM_PORT value injected into it.
+     */
     @Autowired
-    private TestRestTemplate restTemplate;
+    private TestRestTemplate testRestTemplate;
 
     @Autowired
     private CamelContext camelContext;
+
+    @Rule
+    public OpenShiftServer server = new OpenShiftServer();
+
+    /**
+     * Wraps the existing OpenShiftClient bean with a spy. This allows us
+     * to override the client configuration of the bean, to point to our
+     * mock OpenShiftServer.
+     */
+    @SpyBean
+    private OpenShiftClient client;
+
+    /**
+     * Ensure that the mock Kubernetes/OpenShift server is returning
+     * a TemplateList as expected
+     */
+    @Test
+    @Ignore
+    public void testMock() {
+
+        // Configure a single template containing one pod
+        server.expect()
+                .withPath("/oapi/v1/namespaces/" + TEST_NAMESPACE + "/templates")
+                .andReturn(200, new TemplateListBuilder().withItems(
+                        new TemplateBuilder().withObjects(
+                                new PodBuilder().withNewMetadata().withName("mypod").endMetadata().build()
+                        ).build()
+                )).once();
+
+        // Grab a client and list templates in the given namespace
+        OpenShiftClient client = server.getOpenshiftClient();
+        TemplateList templateList = client.templates().inNamespace(TEST_NAMESPACE).list();
+
+        // Make sure the right number of templates was returned
+        assertNotNull(templateList);
+        assertEquals(1, templateList.getItems().size());
+    }
+
+    /**
+     * Ensure that the Taskman REST API returns the correct list of Templates
+     * @throws IOException
+     */
+    @Test
+    public void shouldGetTemplateList() throws IOException {
+
+        // Given: the OpenShiftClient mock is configured to talk to our mock
+        given(this.client.getConfiguration())
+                .willReturn(server.getOpenshiftClient().getConfiguration());
+        given(this.client.templates())
+                .willReturn(server.getOpenshiftClient().templates());
+
+        // And a single OpenShift template is added to the Mock server
+        String json = IOHelpers.readFully(getClass().getResourceAsStream("/template-list.json"));
+        server.expect()
+                .withPath("/oapi/v1/namespaces/" + TEST_NAMESPACE + "/templates?labelSelector=" + TEMPLATE_LABEL)
+                .andReturn(200, json)
+                .always();
+
+        // When: we invoke our REST API to get a list of templates
+//        ResponseEntity<Object> responseEntity = testRestTemplate.getForEntity("/api/templates", Object.class);
+/*
+        ResponseEntity<Object[]> responseEntity = testRestTemplate.getForEntity("/api/templates", Object[].class);
+        Object body = responseEntity.getBody();
+        MediaType contentType = responseEntity.getHeaders().getContentType();
+*/
+
+        ResponseEntity<List<TaskTemplate>> response =
+                testRestTemplate.exchange("/api/templates",
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<List<TaskTemplate>>() {
+                        });
+        List<TaskTemplate> templates = response.getBody();
+
+        // Then: we should get a template list containing 1 item
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        LOG.info(templates.toString());
+
+    }
+
+
+    /**
+     * Test that a local mock OpenShiftClient can fetch a list of templates.
+     * This is not a functional test of the application itself, just a test
+     * class to prove that the client can talk to the mock OpenShiftServer
+     */
+    @Test
+    @Ignore
+    public void testOpenShiftClient() throws IOException {
+
+        // Given a mock OpenShift API which returns a template with the given label
+        String json = IOHelpers.readFully(getClass().getResourceAsStream("/template-list.json"));
+        server.expect()
+                .withPath("/oapi/v1/namespaces/" + TEST_NAMESPACE + "/templates?labelSelector=" + TEMPLATE_LABEL)
+                .andReturn(200, json)
+                .always();
+
+        // When we get a local client and query for templates
+        OpenShiftClient client = server.getOpenshiftClient();
+        LOG.info("Using OpenShift client URL: " + client.getConfiguration().getMasterUrl());
+        TemplateList templateList = client.templates().withLabel(TEMPLATE_LABEL).list();
+
+        // Then we should be returned a template list containing 1 item
+        assertEquals(1, templateList.getItems().size());
+
+    }
 
 }

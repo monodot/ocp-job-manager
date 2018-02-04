@@ -5,3 +5,7 @@ camel:
 quickstart:
   generateOrderPeriod: 1s
   processOrderPeriod: 3s
+
+#taskman:
+#  templates:
+#    label: taskman

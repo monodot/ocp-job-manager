@@ -1,6 +1,6 @@
 package com.example.model;
 
-public class JobTemplate {
+public class Task {
 
     private String name;
 

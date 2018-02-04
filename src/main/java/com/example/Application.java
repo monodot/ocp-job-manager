@@ -39,7 +39,7 @@ public class Application extends SpringBootServletInitializer {
     @Bean
     ServletRegistrationBean servletRegistrationBean() {
         ServletRegistrationBean servlet = new ServletRegistrationBean(
-            new CamelHttpTransportServlet(), "/api/*");
+                new CamelHttpTransportServlet(), "/api/*");
         servlet.setName("CamelServlet");
         return servlet;
     }

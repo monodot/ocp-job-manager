@@ -1,0 +1,262 @@
+{
+  "kind": "TemplateList",
+  "apiVersion": "v1",
+  "items": [
+    {
+      "metadata": {
+        "name": "mytemplate",
+        "annotations": {
+          "openshift.io/display-name": "Transform App T0001",
+          "description": "A transform app which can be created and run on demand.",
+          "openshift.io/documentation-url": "http://example.com/link/documentation",
+          "openshift.io/support-url": "http://example.com/link/support",
+          "openshift.io/provider-display-name": "Example, Inc. Department X",
+          "iconClass": "icon-jboss",
+          "tags": "batchjob,camel,integration"
+        },
+        "labels": {
+          "taskman": "enabled"
+        }
+      },
+      "message": "Your pod with identifier ${JOB_SUFFIX} and batch ID ${BATCH_ID} has been scheduled, and will commence shortly.",
+      "objects": [
+        {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "metadata": {
+            "name": "mytemplate-${JOB_SUFFIX}"
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [
+                  {
+                    "name": "S3_BUCKET",
+                    "valueFrom": {
+                      "configMapKeyRef": {
+                        "name": "aws-configmap",
+                        "key": "s3.bucket"
+                      }
+                    }
+                  },
+                  {
+                    "name": "S3_PREFIX",
+                    "value": "${BATCH_ID}"
+                  },
+                  {
+                    "name": "DIR_CACHE",
+                    "valueFrom": {
+                      "configMapKeyRef": {
+                        "name": "mytemplate-configmap",
+                        "key": "dir.cache"
+                      }
+                    }
+                  },
+                  {
+                    "name": "DIR_PARTNER",
+                    "valueFrom": {
+                      "configMapKeyRef": {
+                        "name": "mytemplate-configmap",
+                        "key": "dir.partner"
+                      }
+                    }
+                  },
+                  {
+                    "name": "AUTO_SHUTDOWN",
+                    "valueFrom": {
+                      "configMapKeyRef": {
+                        "name": "mytemplate-configmap",
+                        "key": "auto.shutdown"
+                      }
+                    }
+                  },
+                  {
+                    "name": "DEMO_GREETING",
+                    "valueFrom": {
+                      "configMapKeyRef": {
+                        "name": "mytemplate-configmap",
+                        "key": "demo.greeting"
+                      }
+                    }
+                  },
+                  {
+                    "name": "DEMO_FILTER",
+                    "value": "${DEMO_FILTER}"
+                  },
+                  {
+                    "name": "SPRING_CONFIG_LOCATION",
+                    "value": "/deployments/config/aws/aws.properties"
+                  },
+                  {
+                    "name": "KUBERNETES_NAMESPACE",
+                    "valueFrom": {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      }
+                    }
+                  },
+                  {
+                    "name": "JAVA_APP_DIR",
+                    "value": "/deployments"
+                  },
+                  {
+                    "name": "TRANSFORM_MAPPINGFILE",
+                    "value": "file://${MAPPING_MOUNT_DIR}/mapping-jobprofile.xml"
+                  }
+                ],
+                "image": "${REGISTRY_HOST}/${BUILD_NAMESPACE}/mytemplate:${IMAGE_TAG}",
+                "livenessProbe": {
+                  "failureThreshold": 3,
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 8081,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 180,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 1
+                },
+                "name": "spring-boot",
+                "ports": [
+                  {
+                    "containerPort": 8080,
+                    "name": "http",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 9779,
+                    "name": "prometheus",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 8778,
+                    "name": "jolokia",
+                    "protocol": "TCP"
+                  }
+                ],
+                "readinessProbe": {
+                  "failureThreshold": 3,
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 8081,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 10,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "timeoutSeconds": 1
+                },
+                "resources": {
+                  "limits": {
+                    "cpu": "1"
+                  },
+                  "requests": {
+                    "cpu": "200m"
+                  }
+                },
+                "securityContext": {
+                  "privileged": false
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "volumeMounts": [
+                  {
+                    "name": "transform-mappings-volume",
+                    "mountPath": "${MAPPING_MOUNT_DIR}",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "aws-secret-volume",
+                    "mountPath": "/deployments/config/aws",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Never",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "name": "transform-mappings-volume",
+                "configMap": {
+                  "defaultMode": 420,
+                  "items": [
+                    {
+                      "key": "mapping-jobprofile.xml",
+                      "path": "mapping-jobprofile.xml"
+                    },
+                    {
+                      "key": "mapping-other.xml",
+                      "path": "mapping-other.xml"
+                    }
+                  ],
+                  "name": "mytemplate-configmap"
+                }
+              },
+              {
+                "name": "aws-secret-volume",
+                "secret": {
+                  "secretName": "aws-secret"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "REGISTRY_HOST",
+          "displayName": "Image Registry Host and Port",
+          "description": "Host and port of the OpenShift Docker registry",
+          "required": true,
+          "value": "172.30.1.1:5000"
+        },
+        {
+          "name": "BUILD_NAMESPACE",
+          "displayName": "Build Namespace",
+          "description": "The namespace (project) where the application container image resides",
+          "required": true,
+          "value": "demo"
+        },
+        {
+          "name": "IMAGE_TAG",
+          "displayName": "Image Tag",
+          "description": "The specific tag of the application container image to pull and run",
+          "required": true,
+          "value": "latest"
+        },
+        {
+          "name": "JOB_SUFFIX",
+          "displayName": "Job ID",
+          "description": "An ID to give the Job. Provide a unique value, or leave the box blank to generate one.",
+          "generate": "expression",
+          "from": "[a-z0-9]{8}"
+        },
+        {
+          "name": "DEMO_FILTER",
+          "displayName": "Filter Expression (Demo)",
+          "description": "A demonstration of a filter expression that could be passed to the job",
+          "required": false,
+          "value": "LONDON,NEW YORK,MOSCOW"
+        },
+        {
+          "name": "BATCH_ID",
+          "displayName": "Batch ID",
+          "description": "The specific batch of files to be processed by this job. Usually based on a date - enter in the form YYYY/MMDDnn",
+          "required": true,
+          "value": "2018/010101"
+        },
+        {
+          "name": "MAPPING_MOUNT_DIR",
+          "displayName": "Mapping Mount Directory",
+          "description": "Location in the container where mapping files will be mounted",
+          "required": true,
+          "value": "/deployments/config/mappings"
+        }
+      ]
+    }
+  ]
+}

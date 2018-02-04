@@ -1,8 +1,8 @@
 # ocp-job-manager
 
-A Job management API for OpenShift. Creates Kubernetes resources from OpenShift Templates, and returns job statuses via a Swagger-compliant REST API.
+A management API for creating and monitoring short-lived processes in OpenShift pods. Creates Kubernetes resources from OpenShift Templates, and returns statuses via a Swagger-compliant REST API.
 
-The project was initially created using:
+The project is implemented using Apache Camel on Spring Boot. It was initially created using:
 
 ```
 mvn org.apache.maven.plugins:maven-archetype-plugin:2.4:generate \
@@ -11,6 +11,10 @@ mvn org.apache.maven.plugins:maven-archetype-plugin:2.4:generate \
    -DarchetypeArtifactId=spring-boot-camel-rest-sql-archetype \
    -DarchetypeVersion=2.2.195.redhat-000013
 ```
+
+## License
+
+Some classes in `src/test` are taken from the `kubernetes-client` source code, and so they are provided under the Apache License. These files are clearly labelled in the source code.
 
 ### Building
 
@@ -30,20 +34,9 @@ The example can then be built and deployed using a single goal:
 
     mvn fabric8:deploy -DskipTests=true
     
-**NB:** The Fabric8 Maven Plugin will create a Service Account, `ocp-job-manager`. The app uses this Service Account to query the Kubernetes API. So you must grant this Service Account the relevant permissions to view and edit resources in the namespace:
+**NB:** The Fabric8 Maven Plugin will create a Service Account, `ocp-job-manager`. The app uses this Service Account to query the Kubernetes API. You must grant this Service Account the relevant permissions to view and edit resources in the namespace:
 
     oc policy add-role-to-user edit -z ocp-job-manager
-
-To list all the running pods:
-
-    oc get pods
-
-From this list, find the name of the pod where this app is running, and output the logs from the running pod with:
-
-    oc logs <name of pod>
-
-You can also use the OpenShift [web console](https://docs.openshift.com/container-platform/3.3/getting_started/developers_console.html#developers-console-video) to manage the
-running pods, and view logs and much more.
 
 ### Running via an S2I Application Template
 
@@ -52,6 +45,8 @@ Application templates allow you deploy applications to OpenShift by filling out 
 First, import the Fuse image streams:
 
     oc create -f https://raw.githubusercontent.com/jboss-fuse/application-templates/GA/fis-image-streams.json
+
+Then, (TODO)
 
 ### Accessing the REST service
 
@@ -71,3 +66,7 @@ To create resources from a template:
 ### Swagger API
 
 The example provides API documentation of the service using Swagger using the _context-path_ `api/api-doc`. You can access the API documentation from your Web browser at <http://ocp-job-manager.example.com/api/api-doc>.
+
+## Tests
+
+The unit tests for this application use the same mock servers defined in `kubernetes-client`.

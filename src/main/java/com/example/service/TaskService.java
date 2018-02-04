@@ -1,17 +1,12 @@
 package com.example.service;
 
-import com.example.model.Job;
-import com.example.model.JobTemplate;
+import com.example.model.Task;
+import com.example.model.TaskTemplate;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
-import io.fabric8.kubernetes.api.model.Namespace;
-import io.fabric8.kubernetes.api.model.extensions.JobBuilder;
 import io.fabric8.kubernetes.api.model.extensions.JobList;
-import io.fabric8.kubernetes.api.model.extensions.JobStatus;
-import io.fabric8.kubernetes.api.model.extensions.JobStatusBuilder;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.internal.SerializationUtils;
 import io.fabric8.openshift.api.model.Template;
 import io.fabric8.openshift.api.model.TemplateList;
@@ -23,29 +18,28 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Component
 @ConfigurationProperties(prefix="jobmanager")
-public class JobService {
+public class TaskService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JobService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TaskService.class);
 
     private final OpenShiftClient client;
 
     private String templateLabel;
 
     @Autowired
-    public JobService(OpenShiftClient client) {
+    public TaskService(OpenShiftClient client) {
         this.client = client;
     }
 
 
-    public Job getJob(String name) {
+    public Task getJob(String name) {
         //TODO
 
-        Job job = new Job();
+        Task job = new Task();
         job.setName("batch-stuff");
         return job;
     }
@@ -58,13 +52,13 @@ public class JobService {
         // TODO how to stop a job here?
     }
 
-    public List<Job> getJobs() {
+    public List<Task> getJobs() {
         JobList jobList = client.extensions().jobs().list();
 
-        List<Job> result = new ArrayList<>();
+        List<Task> result = new ArrayList<>();
 
         for (io.fabric8.kubernetes.api.model.extensions.Job kubernetesJob : jobList.getItems()) {
-            Job job = new Job();
+            Task job = new Task();
             job.setName(kubernetesJob.getMetadata().getName());
             result.add(job);
         }
@@ -109,25 +103,10 @@ public class JobService {
         return null;
     }
 
-    /**
-     * Return all OpenShift templates in the current namespace
-     */
-    public List<JobTemplate> getJobTemplates() {
-        TemplateList templateList = client.templates().withLabel(templateLabel).list();
 
-        List<JobTemplate> result = new ArrayList<>();
-
-        for (Template template : templateList.getItems()) {
-            JobTemplate jobTemplate = new JobTemplate();
-            jobTemplate.setName(template.getMetadata().getName());
-            result.add(jobTemplate);
-        }
-
-        return result;
-    }
 
     /**
-     * Delete a Job
+     * Delete a Task
      * @return
      */
     public void deleteJob(String name) {

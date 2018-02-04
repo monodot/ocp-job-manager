@@ -18,6 +18,16 @@ spring:
     remote:
       secret: mysecretvalue
 
-jobmanager:
-  # The label to search for to find relevant OpenShift templates to process
-  templateLabel: jobman
+# Camel Spring Boot auto-configuration
+#camel:
+#  rest:
+#    component: servlet
+#    port: 8080
+#    host: localhost
+#    context-path: /api
+
+# Configuration for this application
+taskman:
+  templates:
+    label: taskman
+  label: taskman

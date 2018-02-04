@@ -1,6 +1,6 @@
 package com.example.model;
 
-public class Job {
+public class TaskTemplate {
 
     private String name;
 
@@ -10,6 +10,11 @@ public class Job {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String toString() {
+        return "TaskTemplate{" +
+                "name='" + name + '\'' + "}";
     }
 
 
