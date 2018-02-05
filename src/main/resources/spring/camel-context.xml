@@ -38,19 +38,19 @@
             </post>
         </rest>
 
-        <rest path="/jobs">
-            <get id="get-job" uri="{id}">
+        <rest path="/tasks">
+            <get id="get-task" uri="{id}">
                 <description>Get information on a specific Task</description>
-                <to uri="bean:taskService?method=getJob(${header.id})"/>
+                <to uri="bean:taskService?method=getTask(${header.id})"/>
             </get>
-            <get id="list-jobs">
+            <get id="list-tasks">
                 <description>Get a list of all Tasks</description>
-                <to uri="bean:taskService?method=getJobList"/>
+                <to uri="bean:taskService?method=getTaskList"/>
             </get>
-            <delete id="delete-job" uri="{id}">
+            <delete id="delete-task" uri="{id}">
                 <description>Stop a Task</description>
                 <responseMessage code="204" message="Task deleted"/>
-                <to uri="bean:taskService?method=deleteJob(${header.id})"/>
+                <to uri="bean:taskService?method=deleteTask(${header.id})"/>
             </delete>
         </rest>
 

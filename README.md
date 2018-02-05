@@ -1,6 +1,6 @@
-# ocp-job-manager
+# ocp-task-manager
 
-A management API for creating and monitoring short-lived processes in OpenShift pods. Creates Kubernetes resources from OpenShift Templates, and returns statuses via a Swagger-compliant REST API.
+A management API for creating and monitoring short-lived processes (tasks) using OpenShift pods. Creates Kubernetes resources from OpenShift Templates, and returns statuses via a Swagger-compliant REST API.
 
 The project is implemented using Apache Camel on Spring Boot. It was initially created using:
 
@@ -34,9 +34,9 @@ The example can then be built and deployed using a single goal:
 
     mvn fabric8:deploy -DskipTests=true
     
-**NB:** The Fabric8 Maven Plugin will create a Service Account, `ocp-job-manager`. The app uses this Service Account to query the Kubernetes API. You must grant this Service Account the relevant permissions to view and edit resources in the namespace:
+**NB:** The Fabric8 Maven Plugin will create a Service Account, `ocp-task-manager`. The app uses this Service Account to query the Kubernetes API. You must grant this Service Account the relevant permissions to view and edit resources in the namespace:
 
-    oc policy add-role-to-user edit -z ocp-job-manager
+    oc policy add-role-to-user edit -z ocp-task-manager
 
 ### Running via an S2I Application Template
 
@@ -50,14 +50,14 @@ Then, (TODO)
 
 ### Accessing the REST service
 
-To get all job templates:
+To get all task templates:
 
-    $ curl http://ocp-job-manager-jobs.apps.127.0.0.1.nip.io/api/jobtemplates
-    [{"name":"templatedjob"}]
+    $ curl http://ocp-task-manager-NAMESPACE.apps.127.0.0.1.nip.io/api/templates
+    [{"name":"templatedtask"}]
     
 To create resources from a template:
 
-    $ curl -X POST http://ocp-job-manager-jobs.apps.127.0.0.1.nip.io/api/jobtemplates/templatedjob
+    $ curl -X POST http://ocp-task-manager-NAMESPACE.apps.127.0.0.1.nip.io/api/templates/templatedtask
     {
       "key": "value",
       ...
@@ -65,7 +65,7 @@ To create resources from a template:
 
 ### Swagger API
 
-The example provides API documentation of the service using Swagger using the _context-path_ `api/api-doc`. You can access the API documentation from your Web browser at <http://ocp-job-manager.example.com/api/api-doc>.
+The example provides API documentation of the service using Swagger using the _context-path_ `api/api-doc`. You can access the API documentation from your Web browser at <http://ocp-task-manager.example.com/api/api-doc>.
 
 ## Tests
 

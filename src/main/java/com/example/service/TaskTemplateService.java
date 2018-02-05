@@ -2,9 +2,9 @@ package com.example.service;
 
 import com.example.model.Task;
 import com.example.model.TaskTemplate;
-import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.api.model.KubernetesList;
-import io.fabric8.kubernetes.api.model.KubernetesResource;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.extensions.Job;
 import io.fabric8.kubernetes.client.internal.SerializationUtils;
 import io.fabric8.openshift.api.model.Template;
 import io.fabric8.openshift.api.model.TemplateList;
@@ -67,36 +67,39 @@ public class TaskTemplateService {
     public List<Task> processTemplate(String templateName) {
         LOG.debug("Processing template {}", templateName);
 
+        // TODO - support non-Pod resources
+        // TODO - accept Parameters to the template
+
+        List<Task> result = new ArrayList<>();
+
         // Process the OpenShift template into a List of Kubernetes objects
         KubernetesList list = client.templates()
                 .withName(templateName)
                 .process();
 
         for (KubernetesResource resource : list.getItems()) {
-            LOG.info(SerializationUtils.dumpAsYaml((HasMetadata) resource));
-
-            if (resource instanceof io.fabric8.kubernetes.api.model.extensions.Job) {
-                io.fabric8.kubernetes.api.model.extensions.Job job =
-                        (io.fabric8.kubernetes.api.model.extensions.Job) resource;
-
-                // Force this for compatibility with Kubernetes version 3.3
-                // kubernetes-client will use API version for Jobs = 'batch/v1'
-                // But Kubernetes 3.3 expects API version for Jobs = 'extensions/v1beta1'
-                // So we manually force the API version
-                job.setApiVersion("extensions/v1beta1");
-
-                // Additionally, the autoSelector property needs to be set
-                // otherwise Kubernetes complains that `selector` and `labels` are null
-                // See: https://github.com/kubernetes/kubernetes/issues/23599
-                job.getSpec().setAutoSelector(true);
-
+            try {
                 LOG.info(SerializationUtils.dumpAsYaml((HasMetadata) resource));
+            } catch (JsonProcessingException jpe) {
+                LOG.error("Error serialising to YAML");
+            }
 
-                client.extensions().jobs().create(job);
+            if (resource instanceof Pod) {
+                Pod pod = (Pod) resource;
+
+                Pod created = client.pods().create(pod);
+
+                Task task = new Task();
+
+                task.setName(created.getMetadata().getName());
+
+                result.add(task);
+
+
             }
         }
 
-        return null;
+        return result;
 
 
     }
